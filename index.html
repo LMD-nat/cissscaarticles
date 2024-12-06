@@ -21,19 +21,49 @@
     <!-- Include BibTeX.js -->
     <script src="https://cdn.jsdelivr.net/gh/pcooksey/bibtex-js/bibtex_js.js"></script>
 
+    <!-- Script to load and render the .bib file -->
     <script>
-      // Load the .bib file and render it
-      const bibtexElement = document.getElementById('articles-container');
+      // Path to the .bib file
       const bibtexFilePath = 'references.bib';
 
-      BibTeXJS.displayBibtex(bibtexFilePath, {
-        targetElement: bibtexElement,
-        bibtexStyle: {
-          entrySeparator: '<hr>', 
-          entryFormat: 'html',    
-        }
-      });
+      // Load the .bib file and parse it
+      fetch(bibtexFilePath)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Failed to fetch ${bibtexFilePath}`);
+          }
+          return response.text();
+        })
+        .then((bibtexData) => {
+          // Parse the BibTeX data
+          const parser = new BibtexParser();
+          parser.setInput(bibtexData);
+          parser.bibtex();
+
+          // Get parsed entries
+          const entries = parser.getEntries();
+          const container = document.getElementById('articles-container');
+
+          // Render entries
+          for (const key in entries) {
+            const entry = entries[key];
+            const articleHTML = `
+              <div>
+                <h3>${entry.TITLE || 'No Title'}</h3>
+                <p><strong>Authors:</strong> ${entry.AUTHOR || 'Unknown'}</p>
+                <p><strong>Journal:</strong> ${entry.JOURNAL || 'Unknown'}</p>
+                <p><strong>Year:</strong> ${entry.YEAR || 'Unknown'}</p>
+                <p><strong>DOI:</strong> ${entry.DOI ? `<a href="https://doi.org/${entry.DOI}" target="_blank">${entry.DOI}</a>` : 'None'}</p>
+              </div>
+              <hr>
+            `;
+            container.innerHTML += articleHTML;
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading BibTeX:', error);
+          document.getElementById('articles-container').innerText = 'Failed to load articles.';
+        });
     </script>
   </body>
 </html>
-
