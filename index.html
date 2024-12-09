@@ -6,22 +6,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#157878">
     <link rel="stylesheet" href="css/normalize.css">
+    <script src="./bibtex_js.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" href="css/cayman.css">
+    <style>
+      /* Style for the select dropdown */
+      select {
+        width: 250px; /* Adjust width of the dropdown to accommodate text */
+        height: 35px; /* Height of the dropdown */
+        padding: 5px; /* Padding for better spacing */
+        font-size: 16px; /* Font size for readability */
+        border: 1px solid #ccc; /* Border for the dropdown */
+        border-radius: 4px; /* Rounded corners for a smooth appearance */
+        background-color: white; /* Background color */
+        color: #000; /* Ensures text is black (or dark) inside the box */
+        cursor: pointer; /* Change cursor to pointer */
+        overflow: hidden; /* Hide overflow */
+        text-overflow: ellipsis; /* Ensure the text doesn't get cut off */
+        white-space: nowrap; /* Prevent text from wrapping */
+      }
+    
+      /* Option styling */
+      select option {
+        padding: 10px; /* Padding for the options */
+        font-size: 16px; /* Consistent font size */
+        color: #000; /* Ensures option text is also black (or dark) */
+      }
+    
+      /* Ensures selected text stays visible within the dropdown box */
+      select:focus {
+        outline: none; /* Remove default outline */
+      }
+    </style>
+    
   </head>
   <body>
     <section class="page-header">
-      <h1 class="project-name">Liste d'articles</h1>
+      <h1 class="project-name">Articles</h1>
+      <!-- Filter by Chercheur (Researcher) -->
+      <div>
+        <label for="chercheur-filter">Filtrer par chercheur:</label>
+        <select id="chercheur-filter">
+          <option value="">Tous</option>
+        </select>
+      </div>
+      <!-- Filter by Year -->
+      <div>
+        <label for="year-filter">Filtrer par année:</label>
+        <select id="year-filter">
+          <option value="">Toutes les années</option>
+        </select>
+      </div>
     </section>
 
     <section class="main-content">
       <div id="articles-container"></div>
     </section>
-
-    <!-- Include BibTeX.js -->
-    <script src="https://cdn.jsdelivr.net/gh/pcooksey/bibtex-js/bibtex_js.js"></script>
-
-    <!-- Script to load and render the .bib file -->
+    
     <script>
       // Path to the .bib file
       const bibtexFilePath = 'references.bib';
@@ -43,22 +84,75 @@
           // Get parsed entries
           const entries = parser.getEntries();
           const container = document.getElementById('articles-container');
+          const chercheurFilter = document.getElementById('chercheur-filter');
+          const yearFilter = document.getElementById('year-filter');
 
-          // Render entries
+          // Collect all unique chercheurs (researchers) and years
+          const chercheurs = new Set();
+          const years = new Set();
           for (const key in entries) {
             const entry = entries[key];
-            const articleHTML = `
-              <div>
-                <h3>${entry.TITLE || 'No Title'}</h3>
-                <p><strong>Authors:</strong> ${entry.AUTHOR || 'Unknown'}</p>
-                <p><strong>Journal:</strong> ${entry.JOURNAL || 'Unknown'}</p>
-                <p><strong>Year:</strong> ${entry.YEAR || 'Unknown'}</p>
-                <p><strong>DOI:</strong> ${entry.DOI ? `<a href="https://doi.org/${entry.DOI}" target="_blank">${entry.DOI}</a>` : 'None'}</p>
-              </div>
-              <hr>
-            `;
-            container.innerHTML += articleHTML;
+            const chercheur = entry.KEYWORDS || 'Unknown';
+            const year = entry.YEAR ? entry.YEAR.substring(0, 4) : 'Inconnu';
+            chercheurs.add(chercheur);
+            years.add(year);
           }
+
+          // Populate the filter dropdown with chercheurs
+          chercheurs.forEach((chercheur) => {
+            const option = document.createElement('option');
+            option.value = chercheur;
+            option.textContent = chercheur;
+            chercheurFilter.appendChild(option);
+          });
+
+          // Populate the year filter dropdown
+          years.forEach((year) => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+          });
+
+          // Function to render articles
+          function renderArticles(filterChercheur = '', filterYear = '') {
+            container.innerHTML = ''; // Clear existing articles
+            for (const key in entries) {
+              const entry = entries[key];
+              const chercheur = entry.KEYWORDS || 'Unknown';
+              const year = entry.YEAR ? entry.YEAR.substring(0, 4) : 'Inconnu';
+              
+              if ((!filterChercheur || filterChercheur === chercheur) &&
+                  (!filterYear || filterYear === year)) {
+                const articleHTML = `
+                  <div>
+                    <h3><a href="${entry.DOI || '#'}" target="_blank">${entry.TITLE || 'No Title'}</a></h3>
+                    <p><strong>Auteurs:</strong> ${entry.AUTHOR || 'Unknown'}</p>
+                    <p><strong>Chercheur:</strong> ${entry.KEYWORDS}</p>
+                    <p><strong>Année:</strong> ${year}</p> <!-- Display only the year -->
+                  </div>
+                  <hr>
+                `;
+                container.innerHTML += articleHTML;
+              }
+            }
+          }
+
+          // Initially render all articles
+          renderArticles();
+
+          // Add event listeners to filter dropdowns
+          chercheurFilter.addEventListener('change', (event) => {
+            const selectedChercheur = event.target.value;
+            const selectedYear = yearFilter.value;
+            renderArticles(selectedChercheur, selectedYear);
+          });
+
+          yearFilter.addEventListener('change', (event) => {
+            const selectedYear = event.target.value;
+            const selectedChercheur = chercheurFilter.value;
+            renderArticles(selectedChercheur, selectedYear);
+          });
         })
         .catch((error) => {
           console.error('Error loading BibTeX:', error);
